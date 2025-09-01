@@ -9,7 +9,7 @@
 
 ## How to Use
 1. Open the live page:  
-   [https://<your-username>.github.io/<repo-name>/](https://<your-username>.github.io/<repo-name>/)
+   [https://taljishi.github.io/cnt-tools/](https://taljishi.github.io/cnt-tools/#pricing)
 2. Use directly in your browser – works offline once loaded.
 3. On iPad/iPhone: open in Safari → **Share → Add to Home Screen** for app-like use.
 4. On desktop Chrome/Edge: use **Install as app** for a standalone window.
