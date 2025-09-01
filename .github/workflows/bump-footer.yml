@@ -1,0 +1,33 @@
+name: Bump footer version/date
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version and set date
+        id: meta
+        run: |
+          echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +%F)"   >> $GITHUB_OUTPUT
+
+      - name: Update footer in index.html
+        run: |
+          v="${{ steps.meta.outputs.version }}"
+          d="${{ steps.meta.outputs.date }}"
+          sed -E -i "s/Version v[0-9.]+ • Last updated [0-9]{4}-[0-9]{2}-[0-9]{2}/Version v${v} • Last updated ${d}/" index.html
+          if git diff --quiet; then
+            echo "No footer changes"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: bump footer to v${v} on ${d} [skip ci]"
+          git push
