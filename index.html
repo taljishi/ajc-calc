@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CNT Tools</title>
+<style>
+  :root {
+    --bg:#0b0c10; --card:#16181d; --ink:#e8eaf0;
+    --muted:#9aa3b2; --accent:#41c3a9; --danger:#ff6363;
+    --border:#23262d; --field:#0f1115;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    padding:16px; background:rgba(11,12,16,.9);
+    border-bottom:1px solid var(--border); backdrop-filter: blur(6px);
+  }
+  h1{margin:0; font-size:18px; font-weight:700}
+  .sub{color:var(--muted); font-size:13px; margin-top:4px}
+  nav[role="tablist"]{
+    display:flex; gap:8px; padding:12px 16px;
+    border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  .tab{
+    padding:8px 12px; border:1px solid var(--border);
+    background:#111; color:var(--ink);
+    border-radius:10px; cursor:pointer;
+  }
+  .tab[aria-selected="true"]{ border-color:var(--accent); outline:2px solid var(--accent) }
+  .wrap{ max-width: 980px; margin: 16px auto 40px; padding: 0 16px; }
+  .card{
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:16px; box-shadow:0 6px 24px rgba(0,0,0,.25);
+  }
+  h2{margin:0 0 10px 0; font-size:18px}
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+  @media (max-width: 760px){ .row{ grid-template-columns:1fr } }
+  label{ display:block; font-size:13px; color:var(--muted); margin:2px 0 6px }
+  input[type="text"]{
+    width:100%; padding:12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--field);
+    color:var(--ink);
+  }
+  input[aria-invalid="true"]{ border-color: var(--danger) }
+  .hint{ font-size:12px; color:var(--muted); margin-top:4px }
+  .actions{ display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 4px }
+  button{
+    padding:10px 12px; border-radius:10px;
+    border:1px solid var(--border); background:#0f1115; color:var(--ink);
+    cursor:pointer;
+  }
+  button.primary{ background:var(--accent); color:#041c18; border-color:transparent }
+  button.ghost{ background:transparent }
+  .result{ margin-top:12px; padding:12px; border-radius:12px; background:var(--field); border:1px solid var(--border) }
+  .kpi{ font-size:28px; font-weight:700 }
+  .muted{ color:var(--muted) }
+  .split{ display:flex; gap:16px; flex-wrap:wrap }
+  .split > div{ flex:1 1 280px }
+  .note{ margin-top:8px; font-size:12px; color:var(--muted) }
+  .foot{ margin-top:20px; font-size:12px; color:var(--muted) }
+  .inline{ display:inline-flex; gap:8px; align-items:center }
+  .switch{ display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden }
+  .switch button{ border:none; background:#0f1115; padding:8px 10px }
+  .switch button[aria-pressed="true"]{ background:var(--accent); color:#041c18 }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px }
+  @media (max-width:900px){ .grid3{ grid-template-columns:1fr 1fr } }
+  @media (max-width:600px){ .grid3{ grid-template-columns:1fr } }
+  @media print{ header, nav, .actions { display:none } body{ background:#fff; color:#000 } .card{ box-shadow:none; border-color:#ddd } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>CNT Tools</h1>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-panel="pricing" aria-selected="true">Pricing</button>
+      <button class="tab" role="tab" data-panel="vat">VAT</button>
+      <button class="tab" role="tab" data-panel="bonus">Bonus</button>
+      <button class="tab" role="tab" data-panel="overtime">Overtime</button>
+      <button class="tab" role="tab" data-panel="card">Card Fees</button>
+    </nav>
+  </header>
+
+  <div class="wrap">
+
+    <!-- PRICING CALCULATOR -->
+    <section id="panel-pricing" class="card" role="tabpanel">
+      <h2>Pricing Calculator</h2>
+      <div class="inline" aria-label="Choose pricing mode">
+        <span class="muted">Mode:</span>
+        <div class="switch" role="group" aria-label="Pricing mode">
+          <button id="p-mode-margin" aria-pressed="true">Margin%</button>
+          <button id="p-mode-markup" aria-pressed="false">Markup%</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="p-cost">Unit Cost (Foreign Currency)</label>
+          <input id="p-cost" type="text" inputmode="decimal" placeholder="e.g., 10.00">
+          <div class="hint">Supplier price in the foreign currency.</div>
+        </div>
+        <div>
+          <label for="p-currency">Currency</label>
+          <input id="p-currency" type="text" inputmode="text" placeholder="e.g., USD" value="USD">
+          <div class="hint">3-letter code (informational).</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="p-exrate">Exchange Rate (Foreign → BHD)</label>
+          <input id="p-exrate" type="text" inputmode="decimal" placeholder="e.g., 0.376900">
+          <div class="hint">1 <span id="p-cur-hint">unit</span> × rate = BHD (shown with 6dp).</div>
+        </div>
+        <div>
+          <label for="p-ship">Est. Shipping &amp; Handling %</label>
+          <input id="p-ship" type="text" inputmode="decimal" placeholder="e.g., 5">
+          <div class="hint">Percentage of converted cost (per unit).</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="p-rate"><span id="p-rate-label">Markup %</span></label>
+          <input id="p-rate" type="text" inputmode="decimal" placeholder="e.g., 30">
+          <div class="hint" id="p-rate-hint">Markup% adds on landed cost; Margin% = (Price − Landed)/Price.</div>
+        </div>
+        <div>
+          <label for="p-vrate">VAT %</label>
+          <input id="p-vrate" type="text" inputmode="decimal" value="10">
+          <div class="hint">Standard Rated VAT</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="p-calc">Calculate</button>
+        <button id="p-clear">Clear</button>
+        <button id="p-copy">Copy</button>
+      </div>
+      <div id="p-out" class="result" aria-live="polite">Enter values to see the price.</div>
+    </section>
+
+    <!-- VAT CALCULATOR -->
+    <section id="panel-vat" class="card" role="tabpanel" hidden>
+      <h2>VAT Calculation</h2>
+      <div class="inline">
+        <span class="muted">I know:</span>
+        <div class="switch" role="group" aria-label="VAT mode">
+          <button id="v-mode-gross" aria-pressed="true">Amount (Incl. VAT)</button>
+          <button id="v-mode-net" aria-pressed="false">Amount (Excl. VAT)</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label id="v-amt-label" for="v-amount">Amount (Excl. VAT)</label>
+          <input id="v-amount" type="text" inputmode="decimal" placeholder="e.g., 100.00">
+          <div class="hint">Base amount depending on the selected mode.</div>
+        </div>
+        <div>
+          <label for="v-rate">VAT %</label>
+          <input id="v-rate" type="text" inputmode="decimal" value="10">
+          <div class="hint">Standard Rated VAT 10%.</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="v-calc">Calculate</button>
+        <button id="v-clear">Clear</button>
+        <button id="v-copy">Copy</button>
+      </div>
+      <div id="v-out" class="result" aria-live="polite">Enter values to see the breakdown.</div>
+    </section>
+
+    <!-- BONUS CALCULATOR -->
+    <section id="panel-bonus" class="card" role="tabpanel" hidden>
+      <h2>Bonus Calculator</h2>
+      <div class="grid3" style="margin-top:8px">
+        <div>
+          <label for="b-buy">Buy Qty</label>
+          <input id="b-buy" type="text" inputmode="decimal" placeholder="e.g., 100">
+          <div class="hint">Quantity purchased (paid units).</div>
+        </div>
+        <div>
+          <label for="b-bonus">Bonus Qty</label>
+          <input id="b-bonus" type="text" inputmode="decimal" placeholder="e.g., 10">
+          <div class="hint">Bonus units given with the purchase.</div>
+        </div>
+        <div>
+          <label for="b-ret">Returned Qty</label>
+          <input id="b-ret" type="text" inputmode="decimal" placeholder="e.g., 12">
+          <div class="hint">Total units returned.</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="b-calc">Calculate</button>
+        <button id="b-clear">Clear</button>
+        <button id="b-copy">Copy</button>
+      </div>
+      <div id="b-out" class="result" aria-live="polite">Enter values to compute bonus.</div>
+    </section>
+
+    <!-- OVERTIME CALCULATOR -->
+    <section id="panel-overtime" class="card" role="tabpanel" hidden>
+      <h2>Overtime Calculator</h2>
+      <div class="inline" aria-label="Choose overtime type">
+        <span class="muted">Overtime Type:</span>
+        <div class="switch" role="group" aria-label="Overtime type">
+          <button id="o-type-normal" type="button" aria-pressed="true">Normal Rate</button>
+          <button id="o-type-holiday" type="button" aria-pressed="false">Holiday Rate</button>
+        </div>
+      </div>
+      <!-- keep a hidden multiplier input synced, so logic is simple -->
+      <div style="display:none">
+        <label for="o-mult">Multiplier</label>
+        <input id="o-mult" type="text" inputmode="decimal" value="1.25">
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="o-salary">Basic Salary (BD)</label>
+          <input id="o-salary" type="text" inputmode="decimal" placeholder="e.g., 250.000">
+        </div>
+        <div>
+          <label for="o-month">Month (YYYY-MM)</label>
+          <input id="o-month" type="text" inputmode="text" placeholder="e.g., 2025-09">
+          <div class="hint">Uses the <strong>actual days</strong> in that month.</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="o-hours">Overtime Hours</label>
+          <input id="o-hours" type="text" inputmode="decimal" placeholder="e.g., 6">
+        </div>
+        <div>
+          <label for="o-hrsday">Hours per Day</label>
+          <input id="o-hrsday" type="text" inputmode="decimal" value="8">
+          <div class="hint">Leave as 8 if unsure.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="o-calc" type="button">Calculate</button>
+        <button id="o-clear" type="button">Clear</button>
+        <button id="o-copy" type="button">Copy</button>
+      </div>
+      <div id="o-out" class="result" aria-live="polite">Enter values to compute overtime.</div>
+    </section>
+
+    <!-- CARD FEES CALCULATOR -->
+    <section id="panel-card" class="card" role="tabpanel" hidden>
+      <h2>Card Fees</h2>
+      <div class="inline">
+        <span class="muted">I know:</span>
+        <div class="switch" role="group" aria-label="Card mode">
+          <button id="c-mode-transaction" aria-pressed="true">Transaction Amount</button>
+          <button id="c-mode-net" aria-pressed="false">Amount Received</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label id="c-amt-label" for="c-amount">Transaction Amount</label>
+          <input id="c-amount" type="text" inputmode="decimal" placeholder="e.g., 100.00">
+        </div>
+        <div>
+          <label for="c-fee">Card Fees %</label>
+          <input id="c-fee" type="text" inputmode="decimal" value="1.8">
+        </div>
+        <div>
+          <label for="c-vatfee">VAT %</label>
+          <input id="c-vatfee" type="text" inputmode="decimal" value="10">
+          <div class="hint">VAT charged on card fees.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="c-calc">Calculate</button>
+        <button id="c-clear">Clear</button>
+        <button id="c-copy">Copy</button>
+      </div>
+
+      <div id="c-out" class="result" aria-live="polite">Enter values to see the breakdown.</div>
+    </section>
+
+    <div class="foot">Version v1.0 • Last updated 2025-09-01</div>
+  </div>
+
+<script>
+  // ---------- Helpers ----------
+  const qs = (s, el=document)=>el.querySelector(s);
+  const qsa = (s, el=document)=>[...el.querySelectorAll(s)];
+  const sanitize = (x)=> (x||'').toString().replace(/[^\d.]/g,'');
+  const toNum = (x)=> Number(sanitize(x) || 0);
+  const round4 = (n)=> Math.round(n * 10000) / 10000;
+  const to3 = (n)=> Number(n).toFixed(3);
+  const to6 = (n)=> Number(n).toFixed(6); // exchange rate formatter
+  const to0 = (n)=> String(Math.round(Number(n)||0));
+
+  // ---------- Tabs & settings ----------
+  const tabButtons = qsa('.tab');
+  const panels = {
+    pricing: qs('#panel-pricing'),
+    vat: qs('#panel-vat'),
+    bonus: qs('#panel-bonus'),
+    overtime: qs('#panel-overtime'),
+    card: qs('#panel-card'),
+  };
+  function activate(tab){
+    tabButtons.forEach(b=>b.setAttribute('aria-selected', b===tab ? 'true' : 'false'));
+    Object.values(panels).forEach(p=>p.hidden=true);
+    const key = tab.dataset.panel;
+    panels[key].hidden=false;
+    location.hash = key;
+    try{ localStorage.setItem('ajc.last.tab', key); }catch{}
+  }
+  tabButtons.forEach(b=>b.addEventListener('click',()=>activate(b)));
+  window.addEventListener('load', ()=>{
+    const desired = (location.hash||'').replace('#','') || (localStorage.getItem('ajc.last.tab') || 'pricing');
+    activate(tabButtons.find(b=>b.dataset.panel===desired) || tabButtons[0]);
+    // Hydrate defaults
+    var fee = localStorage.getItem('ajc.card.fee');
+    var vatf = localStorage.getItem('ajc.card.vatfee');
+    qs('#c-fee').value = (fee!==null ? Number(fee).toFixed(2) : '1.80');
+    qs('#c-vatfee').value = (vatf!==null ? Number(vatf).toFixed(0) : '10');
+    if(qs('#assumptions')) qs('#assumptions').textContent = `VAT 10% • Card fee ${fee}% • VAT on fee ${vatf}%`;
+    const vRate = localStorage.getItem('ajc.vat.rate');
+    if(vRate) qs('#v-rate').value = Number(vRate).toFixed(0);
+
+    // Restore pricing prefs
+    try{
+      var pc = localStorage.getItem('ajc.p.currency') || 'USD';
+      var px = localStorage.getItem('ajc.p.exrate') || '';
+      var ps = localStorage.getItem('ajc.p.ship') || '';
+      var pv = localStorage.getItem('ajc.p.vrate') || '';
+      var el;
+      el = qs('#p-currency'); if(el) el.value = pc;
+      el = qs('#p-exrate');   if(el) el.value = px;
+      el = qs('#p-ship');     if(el) el.value = ps;
+      el = qs('#p-vrate');    if(el && pv!=='') el.value = Number(pv).toFixed(0);
+      el = qs('#p-cur-hint'); if(el) el.textContent = (pc || 'unit');
+    }catch{}
+
+    // currency hint updater
+    (function(){
+      var elCur = qs('#p-currency');
+      if(elCur){
+        elCur.addEventListener('input', function(e){
+          var code = (e.target.value||'').trim().toUpperCase();
+          var hint = qs('#p-cur-hint');
+          if(hint) hint.textContent = code || 'unit';
+        });
+      }
+    })();
+  });
+  // ---------- Copy utilities ----------
+  async function copyOut(elId){
+    try{
+      await navigator.clipboard.writeText(qs(elId).innerText.trim());
+      alert('Copied.');
+    }catch{ alert('Copy failed.'); }
+  }
+
+  // ---------- Pricing ----------
+  const pMode = { current: 'margin' }; // 'markup' or 'margin'
+  function setPricingMode(m){
+    pMode.current = m;
+    qs('#p-mode-markup').setAttribute('aria-pressed', m==='markup');
+    qs('#p-mode-margin').setAttribute('aria-pressed', m==='margin');
+    qs('#p-rate-label').textContent = m==='markup' ? 'Markup %' : 'Margin %';
+    qs('#p-rate-hint').textContent = m==='markup'
+      ? 'Markup% adds on landed cost; Margin% = (Price − Landed)/Price.'
+      : 'Margin% = (Price − Landed)/Price × 100.';
+    qs('#p-out').textContent = 'Enter values to see the price.';
+  }
+  qs('#p-mode-markup').onclick = ()=> setPricingMode('markup');
+  qs('#p-mode-margin').onclick = ()=> setPricingMode('margin');
+  setPricingMode('margin');
+
+  qs('#p-calc').onclick = ()=>{
+    const cur  = ((qs('#p-currency').value||'USD').toString().trim().toUpperCase());
+    const fx   = toNum(qs('#p-exrate').value);        // keep full precision
+    const shipPct = toNum(qs('#p-ship').value) / 100; // percentage
+    const costForeign = toNum(qs('#p-cost').value);
+    const rate = toNum(qs('#p-rate').value) / 100;    // markup or margin (decimal)
+    const vatr = toNum(qs('#p-vrate').value) / 100;
+
+    const out = qs('#p-out');
+    if(!(costForeign>0) || !(fx>0) || !(shipPct>=0) || !(rate>=0) || !(vatr>=0)){
+      out.textContent='Please enter valid numbers (cost, FX, S&H%, rate, VAT).';
+      return;
+    }
+
+    // Persist user prefs
+    try{
+      localStorage.setItem('ajc.p.currency', cur);
+      localStorage.setItem('ajc.p.exrate', String(qs('#p-exrate').value||''));
+      localStorage.setItem('ajc.p.ship',   String(qs('#p-ship').value||''));
+      localStorage.setItem('ajc.p.vrate',  String((vatr*100).toFixed(0)));
+    }catch{}
+
+    // Convert & land the cost (BHD)
+    const converted = round4(costForeign * fx);
+    const shipAmt   = round4(converted * shipPct);
+    const landed    = round4(converted + shipAmt);
+
+    let priceEx, profit, marginPct, markupPct;
+    if(pMode.current==='markup'){
+      priceEx = round4(landed * (1 + rate)); // excl VAT
+      profit  = priceEx - landed;
+      marginPct = profit / priceEx * 100;
+      markupPct = rate*100;
+    }else{
+      const factor = 1 - rate; // Price = Landed / (1 - margin)
+      if(factor<=0){ out.textContent='Invalid margin (must be < 100%).'; return; }
+      priceEx = round4(landed / factor);
+      profit  = priceEx - landed;
+      marginPct = rate*100;
+      markupPct = profit / landed * 100;
+    }
+
+    const vatAmt  = round4(priceEx * vatr);
+    const priceInc = round4(priceEx + vatAmt);
+
+    out.innerHTML = `
+      <div class="kpi">
+        Retail Price: BD ${to3(priceInc)}
+      </div>
+      <div class="muted">
+        Unit Price (Excl. VAT): BD ${to3(priceEx)}<br>
+        VAT (${(vatr*100).toFixed(0)}%): BD ${to3(vatAmt)}<br><br>
+        Cost Price: BD ${to3(converted)} (${cur} ${to3(costForeign)} × BD ${to6(fx)})<br>
+        S&amp;H Cost (${(shipPct*100).toFixed(0)}%): BD ${to3(shipAmt)}<br>
+        Landed Cost: BD ${to3(landed)} (Cost Price + S&amp;H Cost)<br>
+        Margin: ${marginPct.toFixed(2)}% • Markup: ${markupPct.toFixed(2)}%<br>
+      </div>
+    `;
+  };
+  qs('#p-clear').onclick = ()=>{
+    ['#p-cost','#p-currency','#p-exrate','#p-ship','#p-rate','#p-vrate']
+      .forEach(id=>{ const el=qs(id); if(el) el.value=''; });
+    (function(){ var h = qs('#p-cur-hint'); if(h) h.textContent = 'unit'; })();
+    qs('#p-out').textContent='Cleared.';
+  };
+  qs('#p-copy').onclick = ()=> copyOut('#p-out');
+
+
+  // ---------- VAT ----------
+  const vMode = { current: 'gross' }; // 'net' knows excl, 'gross' knows incl
+  function setVatMode(m){
+    vMode.current = m;
+    qs('#v-mode-net').setAttribute('aria-pressed', m==='net');
+    qs('#v-mode-gross').setAttribute('aria-pressed', m==='gross');
+    qs('#v-amt-label').textContent = m==='net' ? 'Amount (Excl. VAT)' : 'Amount (Incl. VAT)';
+    qs('#v-amount').placeholder = m==='net' ? 'e.g., 100.00' : 'e.g., 110.00';
+    qs('#v-out').textContent = 'Enter values to see the breakdown.';
+  }
+  qs('#v-mode-net').onclick = ()=> setVatMode('net');
+  qs('#v-mode-gross').onclick = ()=> setVatMode('gross');
+  setVatMode('gross');
+
+  qs('#v-calc').onclick = ()=>{
+    const rate = toNum(qs('#v-rate').value) / 100;
+    const amt = toNum(qs('#v-amount').value);
+    const out = qs('#v-out');
+    if(!(rate>=0) || !(amt>0)){ out.textContent='Please enter valid numbers.'; return; }
+    try{ localStorage.setItem('ajc.vat.rate', (rate*100).toFixed(0)); }catch{}
+
+    if(vMode.current==='net'){
+      const vat = round4(amt * rate);
+      const gross = amt + vat;
+      out.innerHTML = `
+        <div class="kpi">VAT (${(rate*100).toFixed(0)}%): BD ${to3(vat)}</div>
+        <div class="muted">Total Amount: BD ${to3(gross)}</div><br>
+        <div class="muted">Amount (Excl. VAT): BD ${to3(amt)}</div>
+      `;
+    }else{
+      const net = round4(amt / (1 + rate));
+      const vat = amt - net;
+      out.innerHTML = `
+        <div class="kpi">VAT (${(rate*100).toFixed(0)}%): BD ${to3(vat)}</div>
+        <div class="muted">Amount (Excl. VAT): BD ${to3(net)}</div><br>
+        <div class="muted">Total Amount: ${to3(amt)}</div>
+      `;
+    }
+  };
+  qs('#v-clear').onclick = ()=>{ qs('#v-amount').value=''; qs('#v-out').textContent='Cleared.'; };
+  qs('#v-copy').onclick = ()=> copyOut('#v-out');
+
+
+  // ---------- Bonus ----------
+  qs('#b-calc').onclick = ()=>{
+    const buy = toNum(qs('#b-buy').value);
+    const bon = toNum(qs('#b-bonus').value);
+    const ret = toNum(qs('#b-ret').value);
+    const out = qs('#b-out');
+    if(!(ret>0)) { out.textContent = 'Please enter a valid returned qty.'; return; }
+
+    if(buy<=0 && bon<=0){
+      out.innerHTML = `<div class="kpi">Paid Qty: ${to0(ret)} • Bonus Qty: 0</div>
+      <div class="muted">Returned: ${to3(ret)}</div>
+      <div class="muted">Buy: ${to3(buy)} • Bonus: ${to3(bon)}</div>`;
+      return;
+    }
+    const total = buy + bon;
+    // Original behavior: allocate proportionally and ROUND BONUS DOWN
+    let bonusInt = Math.floor(ret * (bon / total));
+    if(bonusInt < 0) bonusInt = 0;
+    if(bonusInt > ret) bonusInt = Math.floor(ret);
+    const paidInt  = Math.max(0, Math.floor(ret - bonusInt));
+
+    out.innerHTML = `
+      <div class="kpi">Paid Qty: ${to0(paidInt)} • Bonus Qty: ${to0(bonusInt)}</div>
+      <div class="muted">Returned: ${to3(ret)}</div>
+      <div class="muted">Buy: ${to3(buy)} • Bonus: ${to3(bon)}</div>
+    `;
+  };
+  qs('#b-clear').onclick = ()=>{ ['#b-buy','#b-bonus','#b-ret'].forEach(id=>{ const el=qs(id); if(el) el.value=''; }); qs('#b-out').textContent='Cleared.'; };
+  qs('#b-copy').onclick = ()=> copyOut('#b-out');
+
+
+  // ---------- Overtime ----------
+  (function(){
+    // Overtime type toggle: normal (1.25x) or holiday (1.50x)
+    var oType = { current: 'normal' };
+    function setType(t){
+      oType.current = t;
+      var isNorm = (t === 'normal');
+      var btnN = qs('#o-type-normal'); if(btnN){ btnN.setAttribute('aria-pressed', isNorm ? 'true' : 'false'); }
+      var btnH = qs('#o-type-holiday'); if(btnH){ btnH.setAttribute('aria-pressed', isNorm ? 'false' : 'true'); }
+      var mult = isNorm ? 1.25 : 1.50;
+      var el = qs('#o-mult'); if(el){ el.value = String(mult); }
+      var out = qs('#o-out'); if(out){ out.textContent = 'Enter values to compute overtime.'; }
+    }
+    var btnN = qs('#o-type-normal'); if(btnN){ btnN.onclick = function(){ setType('normal'); }; }
+    var btnH = qs('#o-type-holiday'); if(btnH){ btnH.onclick = function(){ setType('holiday'); }; }
+    setType('normal');
+
+    // Fallback delegation to ensure clicks are captured in all environments
+    document.addEventListener('click', function(e){
+      var t = e.target;
+      if(!t || !t.id) return;
+      if(t.id === 'o-type-normal') { setType('normal'); }
+      else if(t.id === 'o-type-holiday') { setType('holiday'); }
+      else if(t.id === 'o-calc') {
+        // trigger the same logic as the bound handler
+        var btn = qs('#o-calc');
+        if(btn && typeof btn.onclick === 'function') { btn.onclick(); }
+      } else if(t.id === 'o-clear') {
+        var btnc = qs('#o-clear');
+        if(btnc && typeof btnc.onclick === 'function') { btnc.onclick(); }
+      } else if(t.id === 'o-copy') {
+        var btnp = qs('#o-copy');
+        if(btnp && typeof btnp.onclick === 'function') { btnp.onclick(); }
+      }
+    });
+
+    function daysInMonthFromInput(s){
+      // expects 'YYYY-MM'; if invalid/empty, use current month
+      var now = new Date();
+      var y = now.getFullYear();
+      var m = now.getMonth() + 1; // 1..12
+      if (s){
+        var parts = String(s).trim().split('-');
+        if (parts.length >= 2){
+          var py = parseInt(parts[0],10);
+          var pm = parseInt(parts[1],10);
+          if(!isNaN(py) && !isNaN(pm) && pm>=1 && pm<=12){ y = py; m = pm; }
+        }
+      }
+      return new Date(y, m, 0).getDate(); // day 0 => last day of previous month
+    }
+
+    // Calculate per spec: (salary / hours_per_month * multiplier) * overtime_hours
+    var oCalc = qs('#o-calc');
+    if(oCalc){
+      oCalc.onclick = function(){
+        var salary = toNum(qs('#o-salary').value);
+        var monthS = (qs('#o-month').value || '');
+        var hrsDay = toNum(qs('#o-hrsday').value) || 8;
+        var otHours = toNum(qs('#o-hours').value);
+        var mult = Number(qs('#o-mult').value || (oType.current === 'holiday' ? 1.5 : 1.25));
+        var out = qs('#o-out');
+        if(!(salary>0) || !(hrsDay>0) || !(otHours>0) || !(mult>0)){
+          if(out) out.textContent = 'Please enter valid numbers.'; return;
+        }
+        var days = daysInMonthFromInput(monthS);
+        var hoursPerMonth = days * hrsDay;
+        var baseHourly = round4(salary / hoursPerMonth);
+        var otRate = round4(baseHourly * mult);
+        var otPay  = round4(otRate * otHours);
+        if(out){
+          out.innerHTML = `
+                <div class="kpi">Overtime Pay: BD ${to3(otPay)}</div>
+                <div class="muted">Overtime Rate (Per Hour): BD ${to3(otRate)}</div>
+                <div class="muted">Overtime Hours: ${otHours.toFixed(1)}</div>
+                <br>
+                <div class="muted">Hourly Rate (Standard): BD ${to3(baseHourly)}</div>
+                <div class="muted">Overtime Rate: ${mult.toFixed(2)}</div>
+                <div class="muted">Hours/Month: ${hoursPerMonth}</div>
+              `;
+                      }
+      };
+    }
+
+    var oClear = qs('#o-clear');
+    if(oClear){
+      oClear.onclick = function(){
+        ['#o-salary','#o-month','#o-hrsday','#o-hours'].forEach(function(id){ var el = qs(id); if(el) el.value = ''; });
+        setType('normal');
+        var out = qs('#o-out'); if(out){ out.textContent = 'Cleared.'; }
+      };
+    }
+
+    var oCopy = qs('#o-copy');
+    if(oCopy){ oCopy.onclick = function(){ copyOut('#o-out'); }; }
+  })();
+  // ---------- Card Fees ----------
+  const cMode = { current: 'transaction' }; // 'transaction' knows T, 'net' knows N
+  function setCardMode(m){
+    cMode.current = m;
+    qs('#c-mode-transaction').setAttribute('aria-pressed', m==='transaction');
+    qs('#c-mode-net').setAttribute('aria-pressed', m==='net');
+    qs('#c-amt-label').textContent = m==='transaction' ? 'Transaction Amount' : 'Amount Received';
+    qs('#c-amount').placeholder = m==='transaction' ? 'e.g., 100.00' : 'e.g., 98.02';
+    qs('#c-out').textContent = 'Enter values to see the breakdown.';
+  }
+  qs('#c-mode-transaction').onclick = ()=> setCardMode('transaction');
+  qs('#c-mode-net').onclick = ()=> setCardMode('net');
+  setCardMode('transaction');
+
+  function updateAssumptions(){
+    const fee = sanitize(qs('#c-fee').value) || '1.8';
+    const vatf = sanitize(qs('#c-vatfee').value) || '10';
+    const el = qs('#assumptions');
+    if(el) el.textContent = `VAT 10% • Card Processing Fees ${fee}% • VAT on fee ${vatf}%`;
+  }
+
+  qs('#c-calc').onclick = ()=>{
+    const r = toNum(qs('#c-fee').value) / 100;
+    const v = toNum(qs('#c-vatfee').value) / 100;
+    const a = toNum(qs('#c-amount').value);
+    const out = qs('#c-out');
+    if(!(r>=0) || !(v>=0) || !(a>0)){ out.textContent='Please enter valid numbers.'; return; }
+
+    try{
+      localStorage.setItem('ajc.card.fee', (r*100).toFixed(2));
+      localStorage.setItem('ajc.card.vatfee', (v*100).toFixed(0));
+    }catch{}
+    updateAssumptions();
+
+    if(cMode.current==='transaction'){
+      const fee = round4(a * r);
+      const vat = round4(fee * v);
+      const net = a - (fee + vat);
+      out.innerHTML = `
+        <div class="kpi">Amount Received: BD ${to3(net)}</div>
+        <div class="muted">Card Processing Fees: BD ${to3(fee)}</div>
+        <div class="muted">VAT (${(v*100).toFixed(0)}%): BD ${to3(vat)}</div><br>
+        <div class="muted">Transaction Amount: BD ${to3(a)}</div>
+      `;
+    }else{
+      const factor = 1 - r * (1 + v);
+      if(factor<=0){ out.textContent='Invalid rates (deductions exceed 100%).'; return; }
+      const T = round4(a / factor);
+      const fee = round4(T * r);
+      const vat = round4(fee * v);
+      const net = T - (fee + vat);
+      out.innerHTML = `
+        <div class="kpi">Transaction Amount: BD ${to3(T)}</div>
+        <div class="muted">Card Processing Fees: ${to3(fee)}</div>
+        <div class="muted">VAT (${(v*100).toFixed(0)}%): BD ${to3(vat)}</div><br>
+        <div class="muted">Amount Received: ${to3(net)}</div>
+      `;
+    }
+  };
+  qs('#c-clear').onclick = ()=>{ qs('#c-amount').value=''; qs('#c-out').textContent='Cleared.'; };
+  qs('#c-copy').onclick = ()=> copyOut('#c-out');
+
+
+  // Accessibility niceties: select-all on focus, Esc clears current field
+  qsa('input[type="text"]').forEach(inp=>{
+    inp.addEventListener('focus', e=> e.target.select());
+    inp.addEventListener('keydown', e=> { if(e.key==='Escape'){ e.target.value=''; } });
+  });
+</script>
