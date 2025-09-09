@@ -1,4 +1,4 @@
-# CNT Tools
+# AJC Tools
 
 **AJC Tools** is a lightweight, single-page web app with quick calculators for everyday business needs:
 - Pricing calculator (with currency conversion, shipping %, margin/markup, VAT)
